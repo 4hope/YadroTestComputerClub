@@ -1,0 +1,427 @@
+#include "computer_club.h"
+
+#include <iomanip>
+#include <iostream>
+#include <vector>
+#include <memory>
+#include <optional>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+
+using namespace std;
+
+ifstream &operator>>(ifstream& f, int& num) {
+    string number;
+    f >> number;
+
+    try {
+        num = stoi(number);
+    }
+    catch (...) {
+        f.setstate(std::ios::failbit);
+    }
+
+    return f;
+}
+
+ifstream &print_fail_line(ifstream& f, streampos start_pos) {
+    string line;
+    f.clear();
+    f.seekg(start_pos);
+    getline(f, line);
+    cout << line << endl;
+    f.setstate(ios::failbit);
+    return f;
+}
+
+
+// TIME
+Time::Time(int hours, int minutes) : hours_(hours), minutes_(minutes) {};
+
+ifstream &operator>>(ifstream& f, Time& time) {
+    streampos start_pos = f.tellg();
+
+    string time_str;
+    f >> time_str;
+
+    tm tm = {};
+    istringstream ss(time_str);
+    ss >> get_time(&tm, "%H:%M");
+
+    if (ss.fail())
+        return print_fail_line(f, start_pos);
+
+    time = Time(tm.tm_hour, tm.tm_min);
+    return f;
+}
+
+ostream &operator<<(ostream& f, const Time& time) {
+    tm tm;
+    tm.tm_hour = time.hours_;
+    tm.tm_min = time.minutes_;
+
+    f << put_time(&tm, "%H:%M");
+
+    return f;
+}
+
+Time Time::operator+(const Time & other) {
+    int total_minutes = (hours_ * 60 + minutes_) + (other.hours_ * 60 + other.minutes_);
+    return Time(total_minutes / 60, total_minutes % 60);
+}
+
+Time Time::operator-(const Time & other) {
+    int total_minutes = (hours_ * 60 + minutes_) - (other.hours_ * 60 + other.minutes_);
+    return Time(total_minutes / 60, total_minutes % 60);
+}
+
+bool operator<(Time& a, Time& b) {
+    return (a.hours_ < b.hours_) || (a.hours_ == b.hours_ && a.minutes_ < b.minutes_);
+}
+
+int Time::get_hours() { return hours_; }
+int Time::get_minutes() { return minutes_; }
+
+
+// EVENT
+Event::Event(Time time, std::optional<int> id) : time_(time), id_(id) {};
+
+ifstream &operator>>(ifstream& f, Event& event) {
+    streampos start_pos = f.tellg();
+
+    f >> event.time_;
+    if (f.fail()) return f;
+
+    if (f.peek() != '\n' && f.peek() != EOF) {
+        int id;
+        f >> id;
+        if (f.fail())
+            return print_fail_line(f, start_pos);
+
+        event.id_ = id;
+    }
+    
+    return f;
+}
+
+ostream &operator<<(ostream& f, const Event& event) {
+    f << event.time_ << " " << event.id_.value() << " ";
+    return f;
+}
+
+Time Event::get_time() { return time_; }
+int Event::get_id() { return id_.value(); }
+
+// OUTGOING EVENT
+OutgoingEvent::OutgoingEvent() : Event(Time(), nullopt), table_number_(nullopt) { }
+
+ifstream &operator>>(ifstream& f, OutgoingEvent& event) {
+    streampos start_pos = f.tellg();
+
+    f >> static_cast<Event&>(event);
+    if (f.fail()) return f;
+
+    if (f.peek() == '\n' || f.peek() == EOF) {
+        return print_fail_line(f, start_pos);
+    }
+
+    f >> event.client_name_;
+    if (f.fail()) {
+        return print_fail_line(f, start_pos);
+    }
+
+    f.clear();
+    if (event.id_ == 2) {
+        if (f.peek() == EOF || f.peek() == '\n') {
+            return print_fail_line(f, start_pos);
+        }
+        
+        int table_number;
+        f >> table_number;
+        if (f.fail()) {
+            return print_fail_line(f, start_pos);
+        }
+        event.table_number_ = table_number;
+    }
+
+    f.clear();
+    if (f.peek() != EOF && f.peek() != '\n') {
+        return print_fail_line(f, start_pos);
+    }
+
+    return f;
+}
+
+ostream &operator<<(std::ostream& f, OutgoingEvent& event) {
+    f << static_cast<Event &>(event) << event.client_name_;
+    if (event.id_ == 2) {
+        f << " " << event.table_number_.value();
+    }
+    f << '\n';
+    return f;
+}
+
+int OutgoingEvent::get_table_number() { return table_number_.value(); }
+string OutgoingEvent::get_client_name() { return client_name_; }
+
+// INCOMING EVENT
+IncomingEvent::IncomingEvent(Time time, int id, optional<string> client_name, optional<string> fault, optional<int> table_number) : 
+    Event(time, id), client_name_(client_name), fault_(fault), table_number_(table_number) { };
+
+ostream &operator<<(std::ostream& f, IncomingEvent& event) {
+    f << static_cast<Event &>(event);
+    if (event.client_name_ && event.table_number_) {
+        f << event.client_name_.value() << " " << event.table_number_.value() << '\n';
+    }
+    else if (event.client_name_) {
+        f << event.client_name_.value() << '\n';
+    }
+    else if (event.fault_) {
+        f << event.fault_.value() << '\n';
+    }
+
+    return f;
+}
+
+int IncomingEvent::get_table_number() { return table_number_.value(); }
+string IncomingEvent::get_client_name() { return client_name_.value(); }
+
+
+// CLIENT
+Client::Client(std::string client_name, Time start_time, std::optional<int> table_number) : 
+    client_name_(client_name), start_time_(start_time), table_number_(table_number) { }
+
+optional<int> Client::get_table_number() { return table_number_; }
+string Client::get_client_name() const { return client_name_; }
+Time &Client::get_start_time() {return start_time_; }
+
+void Client::set_table_number(int new_table_number) { table_number_ = new_table_number; }
+void Client::set_start_time(Time time) { start_time_ = time; }
+
+bool operator<(const Client &a, const Client &b) {
+    return a.client_name_ < b.client_name_;
+}
+
+
+// TABLE
+Table::Table(int number) : number_(number) {
+    free_ = true;
+    revenue_ = 0;
+    use_time_ = Time();
+}
+
+bool Table::is_free() { return free_; }
+void Table::set_free() { free_ = true; }
+void Table::set_busy() { free_ = false; }
+
+void Table::add_revenue(int revenue) { revenue_ += revenue; }
+void Table::add_time(Time time) { use_time_ = use_time_ + time; }
+
+int Table::get_number() { return number_; }
+
+ostream &operator<<(std::ostream& f, const Table& table) {
+    f << table.number_ << " " << table.revenue_ << " " << table.use_time_ << '\n';
+    return f;
+}
+
+bool operator<(const Table &a, const Table &b) {
+    return a.free_ < b.free_;
+}
+
+void Table::cout_money_time(Time time, int table_count) {
+    add_time(time);
+
+    int cur_revenue = (time.get_minutes() > 0 ? time.get_hours() + 1 : time.get_hours()) * table_count;
+    add_revenue(cur_revenue);
+}
+
+
+// COMPUTER CLUB
+ifstream &operator>>(ifstream& f, ComputerClub& club) {
+    streampos start_pos = f.tellg();
+
+    f >> club.table_count_;
+    if (f.fail())
+        return print_fail_line(f, start_pos);
+
+    f >> club.work_start_;
+    if (f.fail())
+        return f;
+
+    f >> club.work_end_;
+    if (f.fail())
+        return f;
+
+    f >> club.hour_cost_;
+    if (f.fail())
+        return print_fail_line(f, start_pos);
+
+    Table fake_table = Table(-1);
+    fake_table.set_busy();
+    club.tables_.push_back(fake_table);
+
+    for (int i = 0; i < club.table_count_; ++i) {
+        club.tables_.push_back(Table(i + 1));
+    }
+    
+    return f;
+}
+
+ostream &operator<<(ostream& f, const ComputerClub& club) {
+    for (auto client : club.clients_) {
+        IncomingEvent event = IncomingEvent(club.work_end_, 11, client.get_client_name());
+        f << event;
+    }
+
+    f << club.work_end_ << '\n';
+    for (int i = 1; i <= club.table_count_; ++i) {
+        f << club.tables_[i];
+    }
+
+    return f;
+}
+
+optional<int> ComputerClub::remove_table_free(Client& client, Time time) {
+    optional<int> table_number = client.get_table_number();
+    if (table_number) {
+        Table& table = tables_[table_number.value()];
+        table.set_free();
+        table.cout_money_time(time - client.get_start_time(), hour_cost_);
+    }
+    return table_number;
+}
+
+optional<int> ComputerClub::delete_client(Client& client, Time time) {
+    clients_.erase(client);
+    return remove_table_free(client, time);
+}
+
+optional<reference_wrapper<Client>> ComputerClub::is_here(string client_name) {
+    auto it = find_if(clients_.begin(), clients_.end(),
+                           [&client_name](const Client &c)
+                           { return c.get_client_name() == client_name; });
+
+    if (it != clients_.end()) {
+        return ref(const_cast<Client &>(*it));
+    }
+    return nullopt;
+}
+
+bool ComputerClub::has_free_tables() {
+    for (auto table : tables_) {
+        if (table.is_free()) return true;
+    }
+    return false;
+}
+
+bool ComputerClub::is_closed(Time time) {
+    return time < work_start_ || work_end_ < time;
+}
+
+void ComputerClub::check_event(OutgoingEvent& event) {
+    switch (event.get_id()) {
+        case 1:
+            if (is_here(event.get_client_name())) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"YouShallNotPass");
+                cout << fault;
+            }
+            else if (is_closed(event.get_time())) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"NotOpenYet");
+                cout << fault;
+            }
+            else {
+                clients_.insert(Client(event.get_client_name(), event.get_time()));
+            }
+            break;
+        case 2: {
+            auto cl = is_here(event.get_client_name());
+            if (!cl) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ClientUnknown");
+                cout << fault;
+            }
+            else if (!tables_[event.get_table_number()].is_free()) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"PlaceIsBusy");
+                cout << fault;
+            }
+            else if (cl->get().get_table_number()) {
+                Client &client = cl->get();
+                tables_[client.get_table_number().value()].set_free();
+                client.set_table_number(event.get_table_number());
+                client.set_start_time(event.get_time());
+                tables_[event.get_table_number()].set_busy();
+            }
+            else {
+                Client &client = cl->get();
+                client.set_table_number(event.get_table_number());
+                client.set_start_time(event.get_time());
+                tables_[event.get_table_number()].set_busy();
+            }
+            break;
+        }
+        case 3:
+            if (has_free_tables()) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ICanWaitNoLonger!");
+                cout << fault;
+            }
+            else if (static_cast<int>(events_.size()) > table_count_) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 11, event.get_client_name());
+                cout << fault;
+            }
+            else events_.push_back(event);
+            break;
+        case 4: {
+            auto is_client = is_here(event.get_client_name());
+            if (!is_client) {
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ClientUnknown");
+                cout << fault;
+            }
+            else {
+                Client &client = is_client->get();
+                optional<int> table_number = delete_client(client, event.get_time());
+                if (table_number && events_.size() >= 1) {
+                    OutgoingEvent new_event = events_.front();
+                    events_.pop_front();
+
+                    auto new_client_link = is_here(new_event.get_client_name());
+                    Client &new_client = new_client_link->get();
+                    new_client.set_table_number(table_number.value());
+                    new_client.set_start_time(event.get_time());
+
+                    Table table = tables_[table_number.value()];
+                    table.set_busy();
+
+                    IncomingEvent e = IncomingEvent(event.get_time(), 12, new_event.get_client_name(), nullopt, table_number);
+                    cout << e;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void ComputerClub::simulate(ifstream& f) {
+    vector<OutgoingEvent> outgoing;
+    while (!f.eof()) {
+        OutgoingEvent ev;
+        f >> ev;
+        if (f.fail()) return;
+
+        outgoing.push_back(ev);
+    }
+
+    cout << work_start_ << endl;
+
+    for (auto ev : outgoing) {
+        cout << ev;
+        check_event(ev);
+    }
+
+    for (auto client : clients_) {
+        remove_table_free(client, work_end_);
+    }
+}
+
+int ComputerClub::get_table_count() { return table_count_; }
