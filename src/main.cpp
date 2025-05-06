@@ -10,11 +10,11 @@ using namespace std;
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        throw std::runtime_error("Incorrect number of arguments");
+        throw runtime_error("Incorrect number of arguments");
     }
 
     string path{ argv[1] };
-    std::ifstream f(path, std::ios::in);
+    ifstream f(path, ios::in);
 
     ComputerClub club;
     f >> club;
