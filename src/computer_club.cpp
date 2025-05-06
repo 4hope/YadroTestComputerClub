@@ -11,7 +11,7 @@
 
 using namespace std;
 
-ifstream &operator>>(ifstream& f, int& num) {
+istringstream &operator>>(istringstream& f, int& num) {
     string number;
     f >> number;
 
@@ -19,19 +19,9 @@ ifstream &operator>>(ifstream& f, int& num) {
         num = stoi(number);
     }
     catch (...) {
-        f.setstate(std::ios::failbit);
+        f.setstate(ios::failbit);
     }
 
-    return f;
-}
-
-ifstream &print_fail_line(ifstream& f, streampos start_pos) {
-    string line;
-    f.clear();
-    f.seekg(start_pos);
-    getline(f, line);
-    cout << line << endl;
-    f.setstate(ios::failbit);
     return f;
 }
 
@@ -39,9 +29,7 @@ ifstream &print_fail_line(ifstream& f, streampos start_pos) {
 // TIME
 Time::Time(int hours, int minutes) : hours_(hours), minutes_(minutes) {};
 
-ifstream &operator>>(ifstream& f, Time& time) {
-    streampos start_pos = f.tellg();
-
+istringstream &operator>>(istringstream& f, Time& time) {
     string time_str;
     f >> time_str;
 
@@ -49,8 +37,10 @@ ifstream &operator>>(ifstream& f, Time& time) {
     istringstream ss(time_str);
     ss >> get_time(&tm, "%H:%M");
 
-    if (ss.fail())
-        return print_fail_line(f, start_pos);
+    if (ss.fail()) {
+        f.setstate(ios::failbit);
+        return f;
+    }
 
     time = Time(tm.tm_hour, tm.tm_min);
     return f;
@@ -87,21 +77,14 @@ int Time::get_minutes() { return minutes_; }
 // EVENT
 Event::Event(Time time, std::optional<int> id) : time_(time), id_(id) {};
 
-ifstream &operator>>(ifstream& f, Event& event) {
-    streampos start_pos = f.tellg();
-
+istringstream &operator>>(istringstream& f, Event& event) {
     f >> event.time_;
+
+    int id;
+    f >> id;
     if (f.fail()) return f;
 
-    if (f.peek() != '\n' && f.peek() != EOF) {
-        int id;
-        f >> id;
-        if (f.fail())
-            return print_fail_line(f, start_pos);
-
-        event.id_ = id;
-    }
-    
+    event.id_ = id;
     return f;
 }
 
@@ -116,38 +99,19 @@ int Event::get_id() { return id_.value(); }
 // OUTGOING EVENT
 OutgoingEvent::OutgoingEvent() : Event(Time(), nullopt), table_number_(nullopt) { }
 
-ifstream &operator>>(ifstream& f, OutgoingEvent& event) {
-    streampos start_pos = f.tellg();
-
-    f >> static_cast<Event&>(event);
+istringstream &operator>>(istringstream& f, OutgoingEvent& event) {
+    f >> static_cast<Event &>(event);
     if (f.fail()) return f;
 
-    if (f.peek() == '\n' || f.peek() == EOF) {
-        return print_fail_line(f, start_pos);
-    }
-
     f >> event.client_name_;
-    if (f.fail()) {
-        return print_fail_line(f, start_pos);
-    }
+    if (f.fail()) return f;
 
-    f.clear();
     if (event.id_ == 2) {
-        if (f.peek() == EOF || f.peek() == '\n') {
-            return print_fail_line(f, start_pos);
-        }
-        
         int table_number;
         f >> table_number;
-        if (f.fail()) {
-            return print_fail_line(f, start_pos);
-        }
-        event.table_number_ = table_number;
-    }
+        if (f.fail()) return f;
 
-    f.clear();
-    if (f.peek() != EOF && f.peek() != '\n') {
-        return print_fail_line(f, start_pos);
+        event.table_number_ = table_number;
     }
 
     return f;
@@ -238,24 +202,44 @@ void Table::cout_money_time(Time time, int table_count) {
 
 
 // COMPUTER CLUB
-ifstream &operator>>(ifstream& f, ComputerClub& club) {
-    streampos start_pos = f.tellg();
-
-    f >> club.table_count_;
-    if (f.fail())
-        return print_fail_line(f, start_pos);
-
-    f >> club.work_start_;
-    if (f.fail())
+ifstream &operator>>(std::ifstream& f, ComputerClub& club) {
+    string line;
+    
+    getline(f, line);
+    istringstream ss1(line);
+    ss1 >> club.table_count_;
+    if (ss1.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
         return f;
+    }
 
-    f >> club.work_end_;
-    if (f.fail())
+    getline(f, line);
+    istringstream ss2(line);
+    ss2 >> club.work_start_;
+    if (ss2.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
         return f;
+    }
 
-    f >> club.hour_cost_;
-    if (f.fail())
-        return print_fail_line(f, start_pos);
+    getline(f, line);
+    istringstream ss3(line);
+    ss3 >> club.work_end_;
+    if (ss3.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
+        return f;
+    }
+
+    getline(f, line);
+    istringstream ss4(line);
+    ss4 >> club.hour_cost_;
+    if (ss4.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
+        return f;
+    }
 
     Table fake_table = Table(-1);
     fake_table.set_busy();
@@ -388,7 +372,7 @@ void ComputerClub::check_event(OutgoingEvent& event) {
                     new_client.set_table_number(table_number.value());
                     new_client.set_start_time(event.get_time());
 
-                    Table table = tables_[table_number.value()];
+                    Table& table = tables_[table_number.value()];
                     table.set_busy();
 
                     IncomingEvent e = IncomingEvent(event.get_time(), 12, new_event.get_client_name(), nullopt, table_number);
@@ -404,14 +388,19 @@ void ComputerClub::check_event(OutgoingEvent& event) {
 
 void ComputerClub::simulate(ifstream& f) {
     vector<OutgoingEvent> outgoing;
-    while (!f.eof()) {
-        OutgoingEvent ev;
-        f >> ev;
-        if (f.fail()) return;
 
+    string line;
+    while (getline(f, line)) {
+        istringstream ss(line);
+        OutgoingEvent ev;
+        ss >> ev;
+        if (ss.fail()) {
+            cout << line << endl;
+            return;
+        }
         outgoing.push_back(ev);
     }
-
+    
     cout << work_start_ << endl;
 
     for (auto ev : outgoing) {

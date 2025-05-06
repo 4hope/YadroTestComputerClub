@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 CC=g++
-CFLAGS=-std=c++23 -Wall -Werror -Wextra
+CFLAGS=-std=c++20 -Wall -Werror -Wextra
 INCLUDE=-Iinclude
 EXECUTABLE=club
 

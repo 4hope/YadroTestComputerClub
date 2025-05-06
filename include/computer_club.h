@@ -8,6 +8,7 @@
 #include <queue>
 #include <deque>
 #include <set>
+#include <sstream>
 
 class Time {
 public:
@@ -15,7 +16,7 @@ public:
     Time(int, int);
     ~Time() = default;
 
-    friend std::ifstream &operator>>(std::ifstream&, Time&);
+    friend std::istringstream &operator>>(std::istringstream&, Time&);
     friend std::ostream &operator<<(std::ostream&, const Time&);
 
     Time operator+(const Time &);
@@ -37,7 +38,7 @@ public:
     Event(Time, std::optional<int>);
     ~Event() = default;
 
-    friend std::ifstream &operator>>(std::ifstream&, Event&);
+    friend std::istringstream &operator>>(std::istringstream&, Event&);
     friend std::ostream &operator<<(std::ostream&, const Event&);
 
     Time get_time();
@@ -53,7 +54,7 @@ public:
     OutgoingEvent();
     ~OutgoingEvent() = default;
 
-    friend std::ifstream &operator>>(std::ifstream&, OutgoingEvent&);
+    friend std::istringstream &operator>>(std::istringstream&, OutgoingEvent&);
     friend std::ostream &operator<<(std::ostream&, OutgoingEvent&);
 
     int get_table_number();

@@ -21,10 +21,9 @@ int main(int argc, char** argv) {
     if (f.fail()) return 0;
 
     club.simulate(f);
+    if (f.fail()) return 0;
+        
+    cout << club;
     f.close();
-
-    if (!f.fail())
-        cout << club;
-
     return 0;
 }
