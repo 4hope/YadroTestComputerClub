@@ -1,8 +1,6 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include "clock_time.h"
-
 #include <iostream>
 #include <optional>
 #include <sstream>

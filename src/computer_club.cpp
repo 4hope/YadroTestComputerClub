@@ -1,4 +1,5 @@
 #include "computer_club.h"
+#include "utils.h"
 
 #include <iomanip>
 #include <iostream>
@@ -62,52 +63,17 @@ void Table::cout_money_time(Time time, int table_count) {
 
 // COMPUTER CLUB
 ifstream &operator>>(std::ifstream& f, ComputerClub& club) {
-    string line, fault;
-    
-    getline(f, line);
-    istringstream ss1(line);
-    ss1 >> club.table_count_;
-    if (ss1.fail()) {
-        cout << line << endl;
-        f.setstate(ios::failbit);
-        return f;
-    }
-    if (ss1 >> fault) {
-        cout << line << endl;
+    if (!read_single_value_line(f, club.table_count_)) {
         f.setstate(ios::failbit);
         return f;
     }
 
-    getline(f, line);
-    istringstream ss2(line);
-    ss2 >> club.work_start_;
-    if (ss2.fail()) {
-        cout << line << endl;
-        f.setstate(ios::failbit);
-        return f;
-    }
-    ss2 >> club.work_end_;
-    if (ss2.fail()) {
-        cout << line << endl;
-        f.setstate(ios::failbit);
-        return f;
-    }
-    if (ss2 >> fault) {
-        cout << line << endl;
+    if (!read_two_values_line(f, club.work_start_, club.work_end_)) {
         f.setstate(ios::failbit);
         return f;
     }
 
-    getline(f, line);
-    istringstream ss3(line);
-    ss3 >> club.hour_cost_;
-    if (ss3.fail()) {
-        cout << line << endl;
-        f.setstate(ios::failbit);
-        return f;
-    }
-    if (ss3 >> fault) {
-        cout << line << endl;
+    if (!read_single_value_line(f, club.hour_cost_)) {
         f.setstate(ios::failbit);
         return f;
     }
