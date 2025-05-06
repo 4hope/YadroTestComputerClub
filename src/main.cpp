@@ -20,10 +20,9 @@ int main(int argc, char** argv) {
     f >> club;
     if (f.fail()) return 0;
 
-    club.simulate(f);
-    if (f.fail()) return 0;
-        
-    cout << club;
+    if (club.simulate(f))
+        cout << club;
+
     f.close();
     return 0;
 }

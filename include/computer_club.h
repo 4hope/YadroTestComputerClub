@@ -1,6 +1,9 @@
 #ifndef COMPUTER_CLUB_H
 #define COMPUTER_CLUB_H
 
+#include "clock_time.h"
+#include "event.h"
+
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -9,79 +12,6 @@
 #include <deque>
 #include <set>
 #include <sstream>
-
-class Time {
-public:
-    Time() = default;
-    Time(int, int);
-    ~Time() = default;
-
-    friend std::istringstream &operator>>(std::istringstream&, Time&);
-    friend std::ostream &operator<<(std::ostream&, const Time&);
-
-    Time operator+(const Time &);
-    Time operator-(const Time &);
-
-    friend bool operator<(Time&, Time&);
-
-    int get_hours();
-    int get_minutes();
-
-private:
-    int hours_;
-    int minutes_;
-};
-
-
-class Event {
-public:
-    Event(Time, std::optional<int>);
-    ~Event() = default;
-
-    friend std::istringstream &operator>>(std::istringstream&, Event&);
-    friend std::ostream &operator<<(std::ostream&, const Event&);
-
-    Time get_time();
-    int get_id();
-
-protected:
-    Time time_;
-    std::optional<int> id_;
-};
-
-class OutgoingEvent : public Event {
-public:
-    OutgoingEvent();
-    ~OutgoingEvent() = default;
-
-    friend std::istringstream &operator>>(std::istringstream&, OutgoingEvent&);
-    friend std::ostream &operator<<(std::ostream&, OutgoingEvent&);
-
-    int get_table_number();
-    std::string get_client_name();
-
-private:
-    std::string client_name_;
-    std::optional<int> table_number_;
-};
-
-class IncomingEvent : public Event {
-public:
-    IncomingEvent(Time, int, std::optional<std::string> = std::nullopt,
-                  std::optional<std::string> = std::nullopt, std::optional<int> = std::nullopt);
-    ~IncomingEvent() = default;
-
-    friend std::ostream &operator<<(std::ostream&, IncomingEvent&);
-
-    int get_table_number();
-    std::string get_client_name();
-
-private:
-    std::optional<std::string> client_name_;
-    std::optional<std::string> fault_;
-    std::optional<int> table_number_;
-};
-
 
 class Client {
 public:
@@ -151,7 +81,7 @@ public:
 
     void check_event(OutgoingEvent&);
 
-    void simulate(std::ifstream &);
+    bool simulate(std::ifstream &);
 
     int get_table_count();
 

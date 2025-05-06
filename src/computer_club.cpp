@@ -11,147 +11,6 @@
 
 using namespace std;
 
-istringstream &operator>>(istringstream& f, int& num) {
-    string number;
-    f >> number;
-
-    try {
-        num = stoi(number);
-    }
-    catch (...) {
-        f.setstate(ios::failbit);
-    }
-
-    return f;
-}
-
-
-// TIME
-Time::Time(int hours, int minutes) : hours_(hours), minutes_(minutes) {};
-
-istringstream &operator>>(istringstream& f, Time& time) {
-    string time_str;
-    f >> time_str;
-
-    tm tm = {};
-    istringstream ss(time_str);
-    ss >> get_time(&tm, "%H:%M");
-
-    if (ss.fail()) {
-        f.setstate(ios::failbit);
-        return f;
-    }
-
-    time = Time(tm.tm_hour, tm.tm_min);
-    return f;
-}
-
-ostream &operator<<(ostream& f, const Time& time) {
-    tm tm;
-    tm.tm_hour = time.hours_;
-    tm.tm_min = time.minutes_;
-
-    f << put_time(&tm, "%H:%M");
-
-    return f;
-}
-
-Time Time::operator+(const Time & other) {
-    int total_minutes = (hours_ * 60 + minutes_) + (other.hours_ * 60 + other.minutes_);
-    return Time(total_minutes / 60, total_minutes % 60);
-}
-
-Time Time::operator-(const Time & other) {
-    int total_minutes = (hours_ * 60 + minutes_) - (other.hours_ * 60 + other.minutes_);
-    return Time(total_minutes / 60, total_minutes % 60);
-}
-
-bool operator<(Time& a, Time& b) {
-    return (a.hours_ < b.hours_) || (a.hours_ == b.hours_ && a.minutes_ < b.minutes_);
-}
-
-int Time::get_hours() { return hours_; }
-int Time::get_minutes() { return minutes_; }
-
-
-// EVENT
-Event::Event(Time time, std::optional<int> id) : time_(time), id_(id) {};
-
-istringstream &operator>>(istringstream& f, Event& event) {
-    f >> event.time_;
-
-    int id;
-    f >> id;
-    if (f.fail()) return f;
-
-    event.id_ = id;
-    return f;
-}
-
-ostream &operator<<(ostream& f, const Event& event) {
-    f << event.time_ << " " << event.id_.value() << " ";
-    return f;
-}
-
-Time Event::get_time() { return time_; }
-int Event::get_id() { return id_.value(); }
-
-// OUTGOING EVENT
-OutgoingEvent::OutgoingEvent() : Event(Time(), nullopt), table_number_(nullopt) { }
-
-istringstream &operator>>(istringstream& f, OutgoingEvent& event) {
-    f >> static_cast<Event &>(event);
-    if (f.fail()) return f;
-
-    f >> event.client_name_;
-    if (f.fail()) return f;
-
-    if (event.id_ == 2) {
-        int table_number;
-        f >> table_number;
-        if (f.fail()) return f;
-
-        event.table_number_ = table_number;
-    }
-
-    return f;
-}
-
-ostream &operator<<(std::ostream& f, OutgoingEvent& event) {
-    f << static_cast<Event &>(event) << event.client_name_;
-    if (event.id_ == 2) {
-        f << " " << event.table_number_.value();
-    }
-    f << '\n';
-    return f;
-}
-
-int OutgoingEvent::get_table_number() { return table_number_.value(); }
-string OutgoingEvent::get_client_name() { return client_name_; }
-
-// INCOMING EVENT
-IncomingEvent::IncomingEvent(Time time, int id, optional<string> client_name, optional<string> fault, optional<int> table_number) : 
-    Event(time, id), client_name_(client_name), fault_(fault), table_number_(table_number) { };
-
-ostream &operator<<(std::ostream& f, IncomingEvent& event) {
-    f << static_cast<Event &>(event);
-    if (event.client_name_ && event.table_number_) {
-        f << event.client_name_.value() << " " << event.table_number_.value() << '\n';
-    }
-    else if (event.client_name_) {
-        f << event.client_name_.value() << '\n';
-    }
-    else if (event.fault_) {
-        f << event.fault_.value() << '\n';
-    }
-
-    return f;
-}
-
-int IncomingEvent::get_table_number() { return table_number_.value(); }
-string IncomingEvent::get_client_name() { return client_name_.value(); }
-
-
 // CLIENT
 Client::Client(std::string client_name, Time start_time, std::optional<int> table_number) : 
     client_name_(client_name), start_time_(start_time), table_number_(table_number) { }
@@ -203,12 +62,17 @@ void Table::cout_money_time(Time time, int table_count) {
 
 // COMPUTER CLUB
 ifstream &operator>>(std::ifstream& f, ComputerClub& club) {
-    string line;
+    string line, fault;
     
     getline(f, line);
     istringstream ss1(line);
     ss1 >> club.table_count_;
     if (ss1.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
+        return f;
+    }
+    if (ss1 >> fault) {
         cout << line << endl;
         f.setstate(ios::failbit);
         return f;
@@ -222,20 +86,27 @@ ifstream &operator>>(std::ifstream& f, ComputerClub& club) {
         f.setstate(ios::failbit);
         return f;
     }
-
-    getline(f, line);
-    istringstream ss3(line);
-    ss3 >> club.work_end_;
-    if (ss3.fail()) {
+    ss2 >> club.work_end_;
+    if (ss2.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
+        return f;
+    }
+    if (ss2 >> fault) {
         cout << line << endl;
         f.setstate(ios::failbit);
         return f;
     }
 
     getline(f, line);
-    istringstream ss4(line);
-    ss4 >> club.hour_cost_;
-    if (ss4.fail()) {
+    istringstream ss3(line);
+    ss3 >> club.hour_cost_;
+    if (ss3.fail()) {
+        cout << line << endl;
+        f.setstate(ios::failbit);
+        return f;
+    }
+    if (ss3 >> fault) {
         cout << line << endl;
         f.setstate(ios::failbit);
         return f;
@@ -368,7 +239,7 @@ void ComputerClub::check_event(OutgoingEvent& event) {
                     events_.pop_front();
 
                     auto new_client_link = is_here(new_event.get_client_name());
-                    Client &new_client = new_client_link->get();
+                    Client& new_client = new_client_link->get();
                     new_client.set_table_number(table_number.value());
                     new_client.set_start_time(event.get_time());
 
@@ -386,21 +257,22 @@ void ComputerClub::check_event(OutgoingEvent& event) {
     }
 }
 
-void ComputerClub::simulate(ifstream& f) {
+bool ComputerClub::simulate(ifstream& f) {
     vector<OutgoingEvent> outgoing;
 
-    string line;
+    string line, fault;
     while (getline(f, line)) {
         istringstream ss(line);
         OutgoingEvent ev;
         ss >> ev;
-        if (ss.fail()) {
+        if (ss.fail() || (ss >> fault)) {
             cout << line << endl;
-            return;
+            f.setstate(ios::failbit);
+            return false;
         }
         outgoing.push_back(ev);
     }
-    
+
     cout << work_start_ << endl;
 
     for (auto ev : outgoing) {
@@ -411,6 +283,8 @@ void ComputerClub::simulate(ifstream& f) {
     for (auto client : clients_) {
         remove_table_free(client, work_end_);
     }
+
+    return true;
 }
 
 int ComputerClub::get_table_count() { return table_count_; }
