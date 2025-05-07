@@ -144,11 +144,11 @@ void ComputerClub::check_event(OutgoingEvent& event) {
     switch (event.get_id()) {
         case 1:
             if (is_here(event.get_client_name())) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"YouShallNotPass");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "YouShallNotPass");
                 cout << fault;
             }
             else if (is_closed(event.get_time())) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"NotOpenYet");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "NotOpenYet");
                 cout << fault;
             }
             else {
@@ -158,11 +158,11 @@ void ComputerClub::check_event(OutgoingEvent& event) {
         case 2: {
             auto cl = is_here(event.get_client_name());
             if (!cl) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ClientUnknown");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "ClientUnknown");
                 cout << fault;
             }
             else if (!tables_[event.get_table_number()].is_free()) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"PlaceIsBusy");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "PlaceIsBusy");
                 cout << fault;
             }
             else if (cl->get().get_table_number()) {
@@ -182,7 +182,7 @@ void ComputerClub::check_event(OutgoingEvent& event) {
         }
         case 3:
             if (has_free_tables()) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ICanWaitNoLonger!");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "ICanWaitNoLonger!");
                 cout << fault;
             }
             else if (static_cast<int>(events_.size()) > table_count_) {
@@ -194,7 +194,7 @@ void ComputerClub::check_event(OutgoingEvent& event) {
         case 4: {
             auto is_client = is_here(event.get_client_name());
             if (!is_client) {
-                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, (string)"ClientUnknown");
+                IncomingEvent fault = IncomingEvent(event.get_time(), 13, nullopt, "ClientUnknown");
                 cout << fault;
             }
             else {

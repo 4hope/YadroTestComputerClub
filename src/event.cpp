@@ -13,6 +13,7 @@
 
 using namespace std;
 
+//EVENT
 Event::Event(Time time, std::optional<int> id) : time_(time), id_(id) {};
 
 istringstream &operator>>(istringstream& f, Event& event) {
